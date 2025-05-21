@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'core/theme/app_theme.dart';
 import 'application/blocs/auth/auth_bloc.dart';
+import 'application/blocs/auth/auth_event.dart';
 import 'infrastructure/repositories/auth_repository_impl.dart';
 import 'presentation/routes/app_router.dart';
 
@@ -18,9 +19,13 @@ class MyApp extends StatelessWidget {
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (context) => AuthBloc(
-            authRepository: AuthRepositoryImpl(),
-          ),
+          create: (context) {
+            final bloc = AuthBloc(
+              authRepository: AuthRepositoryImpl(),
+            );
+            bloc.add(AuthCheckRequested());
+            return bloc;
+          },
         ),
       ],
       child: MaterialApp.router(

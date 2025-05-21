@@ -38,24 +38,24 @@ class LoginPage extends StatelessWidget {
             child: Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                // Logo
-                Icon(Icons.account_balance, size: 120, color: AppTheme.primaryColor),
+                // Logo institucional
+                Icon(Icons.account_balance, size: 100, color: AppTheme.primaryColor),
                 const SizedBox(height: 24),
                 const Text(
-                  'UCIPS',
+                  'Gestion UCIPS',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,
                     color: AppTheme.primaryColor,
                   ),
                 ),
-                const Text(
-                  'Unidad de Control Institucional de Procesos y Servicios',
-                  style: TextStyle(
-                    fontSize: 16,
-                    color: AppTheme.secondaryColor,
-                  ),
-                ),
+                // const Text(
+                //   'Unidad de Control Institucional de Procesos y Servicios',
+                //   style: TextStyle(
+                //     fontSize: 16,
+                //     color: AppTheme.secondaryColor,
+                //   ),
+                // ),
                 const SizedBox(height: 48),
                 Container(
                   constraints: const BoxConstraints(maxWidth: 400),

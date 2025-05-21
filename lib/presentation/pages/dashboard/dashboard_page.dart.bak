@@ -899,8 +899,6 @@ class _RegistroDocumentoForm extends StatelessWidget {
                 ),
               ],
             ),
-            // Fin del formulario
-            ),
           ],
         ),
       ),

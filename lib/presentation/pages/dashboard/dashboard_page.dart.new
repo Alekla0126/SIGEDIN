@@ -158,27 +158,6 @@ class _DashboardPageState extends State<DashboardPage> {
           setState(() {
             section = UCIPSSection.consulta;
           });
-
-          // Limpiar formulario con un retardo adicional
-          Future.delayed(const Duration(milliseconds: 300), () {
-            if (!mounted) return;
-            
-            setState(() {
-              archivoNombre = null;
-              asunto = '';
-              area = '';
-              solicitante = '';
-              acuse = false;
-            });
-
-            // Finalmente, ocultar el mensaje de éxito
-            Future.delayed(const Duration(seconds: 1), () {
-              if (!mounted) return;
-              setState(() {
-                registroExitoso = false;
-              });
-            });
-          });
         });
       } catch (e) {
         // Cerrar diálogo si hay error
@@ -206,8 +185,7 @@ class _DashboardPageState extends State<DashboardPage> {
             children: [
               Expanded(
                 child: _ReusableWidget(
-                  text: 'Documentos registrados: '
-                      '[32m$documentosRegistrados[0m',
+                  text: 'Documentos registrados: $documentosRegistrados',
                   icon: Icons.folder_open,
                   color: const Color(0xFFBBDEFB),
                 ),
@@ -276,8 +254,8 @@ class _DashboardPageState extends State<DashboardPage> {
                         borderRadius: BorderRadius.circular(16),
                       ),
                       clipBehavior: Clip.antiAlias, // Previene overflow
-                      child: SafeArea(
-                        minimum: const EdgeInsets.all(20.0),
+                      child: Padding(
+                        padding: const EdgeInsets.all(16.0),
                         child: _RegistroDocumentoForm(
                           registroExitoso: registroExitoso,
                           archivoNombre: archivoNombre,
@@ -642,6 +620,7 @@ class _DashboardPageState extends State<DashboardPage> {
                           case UCIPSSection.auditoria:
                             return _buildAuditoria();
                         }
+                        return const SizedBox();
                       },
                     ),
                   ),
@@ -774,132 +753,131 @@ class _RegistroDocumentoForm extends StatelessWidget {
               key: formKey,
               // Aseguramos que todos los campos tengan constraints definidos
               child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Campo tipo documento
-                DropdownButtonFormField<String>(
-                  value: tipoDocumento,
-                  isExpanded: true, // Evita overflow horizontal
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo de documento',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Campo tipo documento
+                  DropdownButtonFormField<String>(
+                    value: tipoDocumento,
+                    isExpanded: true, // Evita overflow horizontal
+                    decoration: const InputDecoration(
+                      labelText: 'Tipo de documento',
+                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    ),
+                    items: const [
+                      DropdownMenuItem(value: 'Entrada', child: Text('Entrada')),
+                      DropdownMenuItem(value: 'Salida', child: Text('Salida')),
+                    ],
+                    onChanged: (v) => onTipoDocumentoChanged(v ?? 'Entrada'),
                   ),
-                  items: const [
-                    DropdownMenuItem(value: 'Entrada', child: Text('Entrada')),
-                    DropdownMenuItem(value: 'Salida', child: Text('Salida')),
-                  ],
-                  onChanged: (v) => onTipoDocumentoChanged(v ?? 'Entrada'),
-                ),
-                const SizedBox(height: 12),
-                
-                // Campo asunto
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Asunto',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  const SizedBox(height: 12),
+                  
+                  // Campo asunto
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: 'Asunto',
+                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    ),
+                    initialValue: asunto,
+                    onChanged: onAsuntoChanged,
+                    validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
                   ),
-                  initialValue: asunto,
-                  onChanged: onAsuntoChanged,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 12),
-                
-                // Campo área
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Área',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  const SizedBox(height: 12),
+                  
+                  // Campo área
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: 'Área',
+                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    ),
+                    initialValue: area,
+                    onChanged: onAreaChanged,
+                    validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
                   ),
-                  initialValue: area,
-                  onChanged: onAreaChanged,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 12),
-                
-                // Campo solicitante
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Solicitante',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                  const SizedBox(height: 12),
+                  
+                  // Campo solicitante
+                  TextFormField(
+                    decoration: const InputDecoration(
+                      labelText: 'Solicitante',
+                      contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
+                    ),
+                    initialValue: solicitante,
+                    onChanged: onSolicitanteChanged,
+                    validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
                   ),
-                  initialValue: solicitante,
-                  onChanged: onSolicitanteChanged,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 16),
-                
-                // Sección de archivo - versión simplificada para evitar problemas de layout
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              archivoNombre ?? 'Ningún archivo seleccionado',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: archivoNombre != null ? Colors.green.shade700 : Colors.grey.shade700,
-                                fontWeight: archivoNombre != null ? FontWeight.w500 : FontWeight.normal,
+                  const SizedBox(height: 16),
+                  
+                  // Sección de archivo - versión simplificada para evitar problemas de layout
+                  Container(
+                    margin: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      border: Border.all(color: Colors.grey.shade300),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    padding: const EdgeInsets.all(12),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        Row(
+                          children: [
+                            Expanded(
+                              child: Text(
+                                archivoNombre ?? 'Ningún archivo seleccionado',
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  color: archivoNombre != null ? Colors.green.shade700 : Colors.grey.shade700,
+                                  fontWeight: archivoNombre != null ? FontWeight.w500 : FontWeight.normal,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 36,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.upload_file, size: 16),
-                          label: const Text('Seleccionar PDF'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade700,
-                            elevation: 1,
-                          ),
-                          onPressed: onSubirArchivo,
+                          ],
                         ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                // Opción de acuse
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  value: acuse,
-                  onChanged: (v) => onAcuseChanged(v ?? false),
-                  title: const Text('¿Requiere acuse digital?'),
-                ),
-                const SizedBox(height: 20),
-                
-                // Botón registrar
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton(
-                    onPressed: onRegistrar,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      textStyle: const TextStyle(fontSize: 16),
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 36,
+                          child: ElevatedButton.icon(
+                            icon: const Icon(Icons.upload_file, size: 16),
+                            label: const Text('Seleccionar PDF'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: Colors.grey.shade700,
+                              elevation: 1,
+                            ),
+                            onPressed: onSubirArchivo,
+                          ),
+                        ),
+                      ],
                     ),
-                    child: const Text('Registrar'),
                   ),
-                ),
-              ],
-            ),
-            // Fin del formulario
+                  const SizedBox(height: 12),
+                  
+                  // Opción de acuse
+                  CheckboxListTile(
+                    contentPadding: EdgeInsets.zero,
+                    dense: true,
+                    value: acuse,
+                    onChanged: (v) => onAcuseChanged(v ?? false),
+                    title: const Text('¿Requiere acuse digital?'),
+                  ),
+                  const SizedBox(height: 20),
+                  
+                  // Botón registrar
+                  SizedBox(
+                    width: double.infinity,
+                    height: 46,
+                    child: ElevatedButton(
+                      onPressed: onRegistrar,
+                      style: ElevatedButton.styleFrom(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        textStyle: const TextStyle(fontSize: 16),
+                      ),
+                      child: const Text('Registrar'),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),
