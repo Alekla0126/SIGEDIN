@@ -1,16 +1,51 @@
-# aucips
+# UCIPS – Unidad de Control Institucional de Procesos y Servicios (Frontend Flutter Web)
 
-A new Flutter project.
+## Descripción
 
-## Getting Started
+Este proyecto es un mockup funcional y navegable del sistema UCIPS, desarrollado en Flutter Web siguiendo Clean Architecture y patrón BLoC. Simula el flujo institucional completo: login, dashboard, gestión documental, turnado, acuse, usuarios, auditoría, etc., usando datos y lógica mock.
 
-This project is a starting point for a Flutter application.
+## Características principales
+- **Arquitectura Clean Architecture**: Separación en core, domain, application, infrastructure y presentation.
+- **Gestión de estado con BLoC**.
+- **Navegación con go_router** (compatible web).
+- **Login simulado** con usuarios mock:
+  - `admin@ucips.gob.mx` (Administrador)
+  - `auditor@ucips.gob.mx` (Auditor)
+  - `gestion@ucips.gob.mx` (Gestión Documental)
+  - Contraseña para todos: `admin123`
+- **Dashboard institucional** con menú lateral fijo, tarjetas resumen y accesos rápidos.
+- **Gestión documental**: registro de documentos, subida de archivos (simulada), consulta, turnado y acuse digital.
+- **Gestión de usuarios y bitácora de auditoría** (mock).
+- **Diseño responsivo** y compatible con desktop/web.
 
-A few resources to get you started if this is your first Flutter project:
+## Estructura de carpetas
+- `lib/core/`: Temas, utilidades, constantes, errores.
+- `lib/domain/`: Entidades, repositorios, casos de uso.
+- `lib/infrastructure/`: Implementaciones mock de repositorios y datasources.
+- `lib/application/`: BLoCs y lógica de aplicación.
+- `lib/presentation/`: Páginas, widgets, rutas.
 
-- [Lab: Write your first Flutter app](https://docs.flutter.dev/get-started/codelab)
-- [Cookbook: Useful Flutter samples](https://docs.flutter.dev/cookbook)
+## Instalación y ejecución
+1. Instala las dependencias:
+   ```sh
+   flutter pub get
+   ```
+2. Ejecuta en modo web:
+   ```sh
+   flutter run -d chrome
+   ```
+   o usa VS Code/Futter para lanzar en navegador.
 
-For help getting started with Flutter development, view the
-[online documentation](https://docs.flutter.dev/), which offers tutorials,
-samples, guidance on mobile development, and a full API reference.
+## Pruebas
+- Ejecuta los tests de widgets:
+  ```sh
+  flutter test
+  ```
+
+## Notas
+- El sistema es solo una simulación visual y de flujo, no hay backend real ni persistencia.
+- Los permisos y roles se simulan según el usuario mock autenticado.
+- Si tienes problemas de layout, revisa el ancho de la ventana o recarga la app.
+
+---
+Desarrollado por la Unidad de Control Institucional de Procesos y Servicios (UCIPS).
