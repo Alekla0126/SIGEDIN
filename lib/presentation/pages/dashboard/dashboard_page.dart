@@ -1,8 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:file_picker/file_picker.dart';
+import 'package:flutter/services.dart';
 import '../../../application/blocs/auth/auth_bloc.dart';
 import '../../../application/blocs/auth/auth_event.dart';
+import 'reusable_widget.dart';
+import 'dashboard_section.dart';
+import 'registro_section.dart';
+import 'turnado_section.dart';
+import 'acuse_section.dart';
+import 'usuarios_section.dart';
+import 'auditoria_section.dart';
+import 'consulta_section.dart';
 
 // Enum para las secciones simuladas
 enum UCIPSSection {
@@ -56,16 +66,139 @@ class _DashboardPageState extends State<DashboardPage> {
 
   // Formulario de registro
   final _formKey = GlobalKey<FormState>();
-  String tipoDocumento = 'Entrada';
+  
+
+  
+  // Lista oficial de tipos de documento (código y nombre)
+final List<Map<String, String>> tiposDocumento = [
+  {'codigo': 'MEM', 'nombre': 'Memorándum'},
+  {'codigo': 'OF', 'nombre': 'Oficio'},
+  {'codigo': 'CIR', 'nombre': 'Circular'},
+  {'codigo': 'TI', 'nombre': 'Tarjeta Informativa'},
+  {'codigo': 'OC', 'nombre': 'Oficio de Comisión'},
+  {'codigo': 'PER', 'nombre': 'Documento Personal'},
+  {'codigo': 'REC', 'nombre': 'Documento de la Rectora'},
+  // {'codigo': 'PAP', 'nombre': 'Papeleta'},
+  {'codigo': 'CC', 'nombre': 'Copia de Conocimiento'},
+];
+
+String tipoDocumento = 'MEM';
   String asunto = '';
   String area = '';
   String solicitante = '';
   bool acuse = false;
+  String nomenclatura = '';
+  DateTime? fechaSeleccionada;
+  String fechaTexto = '';
+  String dirigidoA = '';
+  String observaciones = '';
+  String enRespuestaA = '';
+  String remitente = '';
+  String titularDe = '';
+  String plazoAtencion = '';
+  DateTime? fechaPlazo;  // Fecha de plazo de atención
+  bool necesitaAcuse = false;  // Indica si el documento necesita acuse
+  String correosAcuse = '';  // Correos electrónicos para acuse separados por comas
 
-  void _simularSubirArchivo() {
+  // Estado para búsqueda y filtros
+  String busqueda = '';
+  String? filtroTipo;
+  String? filtroArea;
+  String? filtroEstatus;
+
+  // Variables para filtros y búsqueda en consulta
+  String filtroTipoDoc = 'Todos';
+  String filtroAreaDoc = 'Todos';
+  String filtroEstatusDoc = 'Todos';
+  String busquedaDoc = '';
+
+  // Estado para archivos PDF de origen y original
+  String? archivoOrigenNombre;
+  String? archivoOriginalNombre;
+
+  @override
+  void initState() {
+    super.initState();
+    _generarNomenclatura();
+  }
+
+  void _generarNomenclatura() {
+    final now = DateTime.now();
+    final anio = now.year;
+    final correlativo = (documentosRegistrados + 1).toString().padLeft(4, '0');
+    final areaAbrev = 'ADM'; // Simulado, puedes cambiar según área
+    final tipo = tipoDocumento;
     setState(() {
-      archivoNombre = 'documento_prueba.pdf';
+      nomenclatura = 'UCIPS-$areaAbrev-$tipo-$anio-$correlativo';
     });
+  }
+
+  Future<void> _seleccionarFecha(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: fechaSeleccionada ?? DateTime.now(),
+      firstDate: DateTime(2020),
+      lastDate: DateTime(2100),
+      locale: const Locale('es', ''),
+    );
+    if (picked != null) {
+      setState(() {
+        fechaSeleccionada = picked;
+        fechaTexto = '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+      });
+    }
+  }
+  
+  Future<void> _seleccionarFechaPlazo(BuildContext context) async {
+    final DateTime? picked = await showDatePicker(
+      context: context,
+      initialDate: fechaPlazo ?? DateTime.now().add(const Duration(days: 7)),
+      firstDate: DateTime.now(),
+      lastDate: DateTime(2100),
+      locale: const Locale('es', ''),
+    );
+    if (picked != null) {
+      setState(() {
+        fechaPlazo = picked;
+        plazoAtencion = '${picked.day.toString().padLeft(2, '0')}/${picked.month.toString().padLeft(2, '0')}/${picked.year}';
+      });
+    }
+  }
+
+  // Cambia _simularSubirArchivo para aceptar tipo de archivo
+  void _subirArchivo({required bool esOrigen}) async {
+    final result = await FilePicker.platform.pickFiles(
+      type: FileType.custom,
+      allowedExtensions: ['pdf'],
+      withData: false,
+    );
+    if (result != null && result.files.isNotEmpty) {
+      setState(() {
+        if (esOrigen) {
+          archivoOrigenNombre = result.files.first.name;
+        } else {
+          archivoOriginalNombre = result.files.first.name;
+        }
+      });
+    }
+  }
+
+  // Validación de correos electrónicos separados por comas
+  bool _emailsValidos(String correos) {
+    if (correos.isEmpty) {
+      return true; // Si está vacío no hay problema
+    }
+    
+    final emailRegExp = RegExp(r'^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$');
+    final emails = correos.split(',').map((e) => e.trim()).where((e) => e.isNotEmpty);
+    
+    for (final email in emails) {
+      if (!emailRegExp.hasMatch(email)) {
+        return false; // Email inválido
+      }
+    }
+    
+    return true; // Todos los emails válidos
   }
 
   // Función optimizada para evitar problemas de estado y rendering
@@ -73,7 +206,7 @@ class _DashboardPageState extends State<DashboardPage> {
     // Prevenir múltiples llamadas mientras se procesa
     if (registroExitoso) return;
     
-    // Validar formulario
+    // Validar formulario básico
     if (!(_formKey.currentState?.validate() ?? false)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -85,12 +218,36 @@ class _DashboardPageState extends State<DashboardPage> {
       );
       return;
     }
-
-    // Validar archivo
-    if (archivoNombre == null) {
+    
+    // Validación adicional para correos electrónicos
+    if (necesitaAcuse && !_emailsValidos(correosAcuse)) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor adjunta un documento'),
+          content: Text('Los correos electrónicos ingresados tienen un formato inválido'),
+          backgroundColor: Colors.amber,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+        ),
+      );
+      return;
+    }
+
+    // Validar archivo
+    if (archivoOrigenNombre == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor adjunta el archivo de origen (PDF)'),
+          backgroundColor: Colors.amber,
+          behavior: SnackBarBehavior.floating,
+          margin: EdgeInsets.all(10),
+        ),
+      );
+      return;
+    }
+    if (archivoOriginalNombre == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor adjunta el archivo original (PDF)'),
           backgroundColor: Colors.amber,
           behavior: SnackBarBehavior.floating,
           margin: EdgeInsets.all(10),
@@ -135,12 +292,24 @@ class _DashboardPageState extends State<DashboardPage> {
       try {
         // Actualizar datos
         documentosRegistrados++;
-        documentos.add({
+        // Crear documento con todos los campos relevantes
+        Map<String, String> nuevoDoc = {
           'tipo': tipoDoc,
           'asunto': currentAsunto,
           'area': currentArea,
           'estatus': 'Pendiente',
-        });
+        };
+        
+        // Si es un documento de entrada, añadir campos específicos
+        if (tipoDocumento == 'Entrada') {
+          nuevoDoc['plazoAtencion'] = plazoAtencion;
+          nuevoDoc['necesitaAcuse'] = necesitaAcuse.toString();
+          if (necesitaAcuse) {
+            nuevoDoc['correosAcuse'] = correosAcuse;
+          }
+        }
+        
+        documentos.add(nuevoDoc);
 
         // Cerrar diálogo de carga
         Navigator.of(context).pop();
@@ -165,6 +334,8 @@ class _DashboardPageState extends State<DashboardPage> {
             
             setState(() {
               archivoNombre = null;
+              archivoOrigenNombre = null;
+              archivoOriginalNombre = null;
               asunto = '';
               area = '';
               solicitante = '';
@@ -197,300 +368,10 @@ class _DashboardPageState extends State<DashboardPage> {
   }
 
   Widget _buildDashboard() {
-    return SingleChildScrollView(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              Expanded(
-                child: _ReusableWidget(
-                  text: 'Documentos registrados: '
-                      '[32m$documentosRegistrados[0m',
-                  icon: Icons.folder_open,
-                  color: const Color(0xFFBBDEFB),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _ReusableWidget(
-                  text: 'Turnados pendientes: $turnadosPendientes',
-                  icon: Icons.send,
-                  color: const Color(0xFFC8E6C9),
-                ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _ReusableWidget(
-                  text: 'Con acuse: $conAcuse',
-                  icon: Icons.verified,
-                  color: const Color(0xFFFFF9C4),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 32),
-          const _ReusableWidget(
-            text: 'Bienvenido al sistema UCIPS. Selecciona una sección en el menú.',
-            icon: Icons.info_outline,
-            color: Color(0xFFE3F2FD),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Widget mejorado para renderizado seguro sin constraints infinitos
-  Widget _buildRegistro() {
-    // Usamos key para forzar un rebuild completo cuando cambia el estado
-    return Builder(
-      key: ValueKey('registro_form_${registroExitoso}_${archivoNombre ?? "sin_archivo"}'),
-      builder: (context) {
-        return Material(
-          color: Colors.transparent,
-          child: LayoutBuilder(
-            builder: (context, outerConstraints) {
-              // Calculamos un ancho seguro basado en el viewport
-              final screenWidth = MediaQuery.of(context).size.width;
-              final maxWidth = screenWidth > 800 
-                  ? 600.0 
-                  : (screenWidth > 600 ? 550.0 : screenWidth * 0.92);
-              
-              // Aseguramos que tenemos constraints específicos para evitar cualquier valor infinito
-              return SingleChildScrollView(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-                physics: const ClampingScrollPhysics(),
-                child: Center(
-                  child: Container(
-                    width: maxWidth,
-                    constraints: BoxConstraints(
-                      minWidth: 300,
-                      maxWidth: maxWidth,
-                      minHeight: 100,
-                    ),
-                    child: Card(
-                      elevation: 4,
-                      shadowColor: Colors.black.withOpacity(0.2),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(16),
-                      ),
-                      clipBehavior: Clip.antiAlias, // Previene overflow
-                      child: SafeArea(
-                        minimum: const EdgeInsets.all(20.0),
-                        child: _RegistroDocumentoForm(
-                          registroExitoso: registroExitoso,
-                          archivoNombre: archivoNombre,
-                          tipoDocumento: tipoDocumento,
-                          asunto: asunto,
-                          area: area,
-                          solicitante: solicitante,
-                          acuse: acuse,
-                          formKey: _formKey,
-                          onTipoDocumentoChanged: (v) => setState(() => tipoDocumento = v),
-                          onAsuntoChanged: (v) => setState(() => asunto = v),
-                          onAreaChanged: (v) => setState(() => area = v),
-                          onSolicitanteChanged: (v) => setState(() => solicitante = v),
-                          onAcuseChanged: (v) => setState(() => acuse = v),
-                          onSubirArchivo: _simularSubirArchivo,
-                          onRegistrar: _registrarDocumento,
-                        ),
-                      ),
-                    ),
-                  ),
-                ),
-              );
-            },
-          ),
-        );
-      }
-    );
-  }
-
-  Widget _buildConsulta() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Consulta de Documentos', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          SingleChildScrollView(
-            scrollDirection: Axis.horizontal,
-            child: DataTable(
-              columns: const [
-                DataColumn(label: Text('Tipo')),
-                DataColumn(label: Text('Asunto')),
-                DataColumn(label: Text('Área')),
-                DataColumn(label: Text('Estatus')),
-                DataColumn(label: Text('Acciones')),
-              ],
-              rows: documentos.map((doc) {
-                return DataRow(cells: [
-                  DataCell(Text(doc['tipo'] ?? '')),
-                  DataCell(Text(doc['asunto'] ?? '')),
-                  DataCell(Text(doc['area'] ?? '')),
-                  DataCell(Text(doc['estatus'] ?? '')),
-                  DataCell(Row(
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.visibility),
-                        tooltip: 'Ver',
-                        onPressed: () {},
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.send),
-                        tooltip: 'Turnar',
-                        onPressed: () => setState(() => section = UCIPSSection.turnado),
-                      ),
-                      IconButton(
-                        icon: const Icon(Icons.picture_as_pdf),
-                        tooltip: 'Exportar PDF',
-                        onPressed: () {},
-                      ),
-                    ],
-                  )),
-                ]);
-              }).toList(),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTurnado() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Turnar Documento', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          DropdownButtonFormField<String>(
-            value: turnadoA,
-            decoration: const InputDecoration(labelText: 'Turnar a'),
-            items: const [
-              DropdownMenuItem(value: 'Dirección', child: Text('Dirección')),
-              DropdownMenuItem(value: 'Rectoría', child: Text('Rectoría')),
-              DropdownMenuItem(value: 'Compras', child: Text('Compras')),
-            ],
-            onChanged: (v) => setState(() => turnadoA = v),
-          ),
-          const SizedBox(height: 16),
-          ElevatedButton(
-            onPressed: turnadoA != null
-                ? () {
-                    setState(() {
-                      turnadosPendientes++;
-                      section = UCIPSSection.consulta;
-                    });
-                  }
-                : null,
-            child: const Text('Turnar'),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAcuse() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Acuse Digital', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          if (!acuseHecho)
-            ElevatedButton(
-              onPressed: () => setState(() => acuseHecho = true),
-              child: const Text('Acusar Recibido'),
-            ),
-          if (acuseHecho)
-            const _ReusableWidget(
-              text: '¡Acuse realizado exitosamente!',
-              icon: Icons.check_circle_outline,
-              color: Color(0xFFC8E6C9),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildUsuarios() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Gestión de Usuarios', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          DataTable(
-            columns: const [
-              DataColumn(label: Text('Usuario')),
-              DataColumn(label: Text('Rol')),
-              DataColumn(label: Text('Área')),
-              DataColumn(label: Text('Estado')),
-            ],
-            rows: const [
-              DataRow(cells: [
-                DataCell(Text('admin@ucips.gob.mx')),
-                DataCell(Text('Administrador')),
-                DataCell(Text('Dirección General')),
-                DataCell(Text('Activo')),
-              ]),
-              DataRow(cells: [
-                DataCell(Text('usuario1@ucips.gob.mx')),
-                DataCell(Text('Usuario Común')),
-                DataCell(Text('Compras')),
-                DataCell(Text('Activo')),
-              ]),
-              DataRow(cells: [
-                DataCell(Text('auditor@ucips.gob.mx')),
-                DataCell(Text('Auditor')),
-                DataCell(Text('Auditoría')),
-                DataCell(Text('Inactivo')),
-              ]),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAuditoria() {
-    return Padding(
-      padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text('Bitácora de Auditoría', style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-          const SizedBox(height: 16),
-          DataTable(
-            columns: const [
-              DataColumn(label: Text('Fecha')),
-              DataColumn(label: Text('Usuario')),
-              DataColumn(label: Text('Acción')),
-              DataColumn(label: Text('Área')),
-            ],
-            rows: const [
-              DataRow(cells: [
-                DataCell(Text('2025-05-21')),
-                DataCell(Text('admin@ucips.gob.mx')),
-                DataCell(Text('Registro de documento')),
-                DataCell(Text('Dirección General')),
-              ]),
-              DataRow(cells: [
-                DataCell(Text('2025-05-20')),
-                DataCell(Text('usuario1@ucips.gob.mx')),
-                DataCell(Text('Turnado de documento')),
-                DataCell(Text('Compras')),
-              ]),
-            ],
-          ),
-        ],
-      ),
+    return DashboardSection(
+      documentosRegistrados: documentosRegistrados,
+      turnadosPendientes: turnadosPendientes,
+      conAcuse: conAcuse,
     );
   }
 
@@ -578,18 +459,7 @@ class _DashboardPageState extends State<DashboardPage> {
               selected: section == UCIPSSection.consulta,
               onTap: () => setState(() => section = UCIPSSection.consulta),
             ),
-            ListTile(
-              leading: const Icon(Icons.send),
-              title: const Text('Turnado'),
-              selected: section == UCIPSSection.turnado,
-              onTap: () => setState(() => section = UCIPSSection.turnado),
-            ),
-            ListTile(
-              leading: const Icon(Icons.verified_user),
-              title: const Text('Acuse Digital'),
-              selected: section == UCIPSSection.acuse,
-              onTap: () => setState(() => section = UCIPSSection.acuse),
-            ),
+            // Quitamos Turnado y Acuse Digital del Drawer
             ListTile(
               leading: const Icon(Icons.people),
               title: const Text('Usuarios'),
@@ -602,7 +472,7 @@ class _DashboardPageState extends State<DashboardPage> {
               selected: section == UCIPSSection.auditoria,
               onTap: () => setState(() => section = UCIPSSection.auditoria),
             ),
-            Divider(),
+            const Divider(),
             ListTile(
               leading: const Icon(Icons.exit_to_app),
               title: const Text('Cerrar sesión'),
@@ -614,296 +484,198 @@ class _DashboardPageState extends State<DashboardPage> {
           ],
         ),
       ),
-      body: Row(
-        children: [
-          Expanded(
-            child: Container(
-              color: const Color(0xFFF8F9FA),
-              child: SingleChildScrollView(
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
-                  child: Align(
-                    alignment: Alignment.topCenter,
-                    child: Builder(
-                      builder: (context) {
-                        switch (section) {
-                          case UCIPSSection.dashboard:
-                            return _buildDashboard();
-                          case UCIPSSection.registro:
-                            return _buildRegistro();
-                          case UCIPSSection.consulta:
-                            return _buildConsulta();
-                          case UCIPSSection.turnado:
-                            return _buildTurnado();
-                          case UCIPSSection.acuse:
-                            return _buildAcuse();
-                          case UCIPSSection.usuarios:
-                            return _buildUsuarios();
-                          case UCIPSSection.auditoria:
-                            return _buildAuditoria();
-                        }
-                      },
-                    ),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Mejoro el widget reutilizable para tarjetas
-class _ReusableWidget extends StatelessWidget {
-  final String text;
-  final IconData? icon;
-  final Color? color;
-
-  const _ReusableWidget({Key? key, required this.text, this.icon, this.color}) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    return Card(
-      elevation: 2,
-      color: color ?? Colors.blue[50],
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            if (icon != null)
-              Container(
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(10),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.04),
-                      blurRadius: 4,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                padding: const EdgeInsets.all(8),
-                margin: const EdgeInsets.only(right: 16),
-                child: Icon(icon, color: Colors.blue[900], size: 32),
-              ),
-            Expanded(
-              child: Text(
-                text,
-                style: const TextStyle(
-                  fontSize: 18,
-                  color: Color(0xFF1A237E),
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-// Widget privado para el formulario de registro de documento
-class _RegistroDocumentoForm extends StatelessWidget {
-  final bool registroExitoso;
-  final String? archivoNombre;
-  final String tipoDocumento;
-  final String asunto;
-  final String area;
-  final String solicitante;
-  final bool acuse;
-  final GlobalKey<FormState> formKey;
-  final ValueChanged<String> onTipoDocumentoChanged;
-  final ValueChanged<String> onAsuntoChanged;
-  final ValueChanged<String> onAreaChanged;
-  final ValueChanged<String> onSolicitanteChanged;
-  final ValueChanged<bool> onAcuseChanged;
-  final VoidCallback onSubirArchivo;
-  final VoidCallback onRegistrar;
-
-  const _RegistroDocumentoForm({
-    Key? key,
-    required this.registroExitoso,
-    required this.archivoNombre,
-    required this.tipoDocumento,
-    required this.asunto,
-    required this.area,
-    required this.solicitante,
-    required this.acuse,
-    required this.formKey,
-    required this.onTipoDocumentoChanged,
-    required this.onAsuntoChanged,
-    required this.onAreaChanged,
-    required this.onSolicitanteChanged,
-    required this.onAcuseChanged,
-    required this.onSubirArchivo,
-    required this.onRegistrar,
-  }) : super(key: key);
-
-  @override
-  Widget build(BuildContext context) {
-    // Usamos un enfoque a prueba de fallos con constraints explícitos
-    return SingleChildScrollView(
-      physics: const ClampingScrollPhysics(),
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(minHeight: 100),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const Text('Registro de Documento', 
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-              overflow: TextOverflow.ellipsis,
-            ),
-            const SizedBox(height: 16),
-            // Mensaje de éxito
-            if (registroExitoso)
-              const _ReusableWidget(
-                text: '¡Documento registrado exitosamente!',
-                icon: Icons.check_circle_outline,
-                color: Color(0xFFC8E6C9),
-              ),
-            const SizedBox(height: 8),
-            // Envolvemos el Form en un Builder para aislar la reconstrucción
-            Form(
-              key: formKey,
-              // Aseguramos que todos los campos tengan constraints definidos
-              child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                // Campo tipo documento
-                DropdownButtonFormField<String>(
-                  value: tipoDocumento,
-                  isExpanded: true, // Evita overflow horizontal
-                  decoration: const InputDecoration(
-                    labelText: 'Tipo de documento',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  ),
-                  items: const [
-                    DropdownMenuItem(value: 'Entrada', child: Text('Entrada')),
-                    DropdownMenuItem(value: 'Salida', child: Text('Salida')),
-                  ],
-                  onChanged: (v) => onTipoDocumentoChanged(v ?? 'Entrada'),
-                ),
-                const SizedBox(height: 12),
-                
-                // Campo asunto
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Asunto',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  ),
-                  initialValue: asunto,
-                  onChanged: onAsuntoChanged,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 12),
-                
-                // Campo área
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Área',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  ),
-                  initialValue: area,
-                  onChanged: onAreaChanged,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 12),
-                
-                // Campo solicitante
-                TextFormField(
-                  decoration: const InputDecoration(
-                    labelText: 'Solicitante',
-                    contentPadding: EdgeInsets.symmetric(vertical: 8, horizontal: 12),
-                  ),
-                  initialValue: solicitante,
-                  onChanged: onSolicitanteChanged,
-                  validator: (v) => (v == null || v.isEmpty) ? 'Campo requerido' : null,
-                ),
-                const SizedBox(height: 16),
-                
-                // Sección de archivo - versión simplificada para evitar problemas de layout
-                Container(
-                  margin: const EdgeInsets.symmetric(vertical: 8),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  padding: const EdgeInsets.all(12),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Row(
-                        children: [
-                          Expanded(
-                            child: Text(
-                              archivoNombre ?? 'Ningún archivo seleccionado',
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: archivoNombre != null ? Colors.green.shade700 : Colors.grey.shade700,
-                                fontWeight: archivoNombre != null ? FontWeight.w500 : FontWeight.normal,
-                              ),
-                            ),
+      body: LayoutBuilder(
+        builder: (context, constraints) {
+          return Row(
+            children: [
+              Expanded(
+                child: Container(
+                  color: const Color(0xFFF8F9FA),
+                  child: SingleChildScrollView(
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 16),
+                      child: ConstrainedBox(
+                        constraints: BoxConstraints(
+                          minHeight: constraints.maxHeight - 32,
+                        ),
+                        child: Align(
+                          alignment: Alignment.topCenter,
+                          child: Builder(
+                            builder: (context) {
+                              switch (section) {
+                                case UCIPSSection.dashboard:
+                                  return _buildDashboard();
+                                case UCIPSSection.registro:
+                                  return RegistroSection(
+                                    registroExitoso: registroExitoso,
+                                    archivoNombre: archivoNombre,
+                                    archivoOrigenNombre: archivoOrigenNombre,
+                                    archivoOriginalNombre: archivoOriginalNombre,
+                                    tipoDocumento: tipoDocumento,
+                                    tiposDocumento: tiposDocumento,
+                                    asunto: asunto,
+                                    area: area,
+                                    solicitante: solicitante,
+                                    acuse: acuse,
+                                    nomenclatura: nomenclatura,
+                                    fechaTexto: fechaTexto,
+                                    dirigidoA: dirigidoA,
+                                    observaciones: observaciones,
+                                    enRespuestaA: enRespuestaA,
+                                    remitente: remitente,
+                                    titularDe: titularDe,
+                                    plazoAtencion: plazoAtencion,
+                                    necesitaAcuse: necesitaAcuse,
+                                    correosAcuse: correosAcuse,
+                                    formKey: _formKey,
+                                    onTipoDocumentoChanged: (v) {
+                                      setState(() {
+                                        tipoDocumento = v ?? 'MEM';
+                                        _generarNomenclatura();
+                                        // Limpiar campos específicos
+                                        asunto = '';
+                                        area = '';
+                                        solicitante = '';
+                                        dirigidoA = '';
+                                        observaciones = '';
+                                        enRespuestaA = '';
+                                        remitente = '';
+                                        titularDe = '';
+                                        plazoAtencion = '';
+                                        fechaSeleccionada = null;
+                                        fechaTexto = '';
+                                        fechaPlazo = null;
+                                        necesitaAcuse = false;
+                                        correosAcuse = '';
+                                      });
+                                    },
+                                    onAsuntoChanged: (v) => setState(() => asunto = v),
+                                    onAreaChanged: (v) => setState(() => area = v),
+                                    onSolicitanteChanged: (v) => setState(() => solicitante = v),
+                                    onAcuseChanged: (v) => setState(() => acuse = v),
+                                    onSubirArchivo: () {}, // No-op for emission, required for reception
+                                    onSubirArchivoOrigen: () => _subirArchivo(esOrigen: true),
+                                    onSubirArchivoOriginal: () => _subirArchivo(esOrigen: false),
+                                    onRegistrar: _registrarDocumento,
+                                    onFechaTap: () => _seleccionarFecha(context),
+                                    onPlazoDeTap: () => _seleccionarFechaPlazo(context),
+                                    onDirigidoAChanged: (v) => setState(() => dirigidoA = v),
+                                    onObservacionesChanged: (v) => setState(() => observaciones = v),
+                                    onEnRespuestaAChanged: (v) => setState(() => enRespuestaA = v),
+                                    onRemitenteChanged: (v) => setState(() => remitente = v),
+                                    onTitularDeChanged: (v) => setState(() => titularDe = v),
+                                    onPlazoAtencionChanged: (v) => setState(() => plazoAtencion = v),
+                                    onNecesitaAcuseChanged: (v) => setState(() => necesitaAcuse = v ?? false),
+                                    onCorreosAcuseChanged: (v) => setState(() => correosAcuse = v),
+                                  );
+                                case UCIPSSection.consulta:
+                                  return SizedBox(
+                                    height: constraints.maxHeight - 32,
+                                    child: ConsultaSection(
+                                      documentos: documentos,
+                                      filtroTipoDoc: filtroTipoDoc,
+                                      filtroAreaDoc: filtroAreaDoc,
+                                      filtroEstatusDoc: filtroEstatusDoc,
+                                      busquedaDoc: busquedaDoc,
+                                      onBusquedaChanged: (v) => setState(() => busquedaDoc = v),
+                                      onFiltroTipoChanged: (v) => setState(() => filtroTipoDoc = v ?? 'Todos'),
+                                      onFiltroAreaChanged: (v) => setState(() => filtroAreaDoc = v ?? 'Todos'),
+                                      onFiltroEstatusChanged: (v) => setState(() => filtroEstatusDoc = v ?? 'Todos'),
+                                      onTurnar: () => setState(() => section = UCIPSSection.turnado),
+                                      onAcuse: () => setState(() => section = UCIPSSection.acuse),
+                                    ),
+                                  );
+                                case UCIPSSection.turnado:
+                                  return TurnadoSection(
+                                    turnadoA: turnadoA,
+                                    onTurnadoAChanged: (v) => setState(() => turnadoA = v),
+                                    onTurnar: () {
+                                      if (turnadoA != null) {
+                                        setState(() {
+                                          turnadosPendientes++;
+                                          section = UCIPSSection.consulta;
+                                        });
+                                      }
+                                    },
+                                    turnarEnabled: turnadoA != null,
+                                  );
+                                case UCIPSSection.acuse:
+                                  return AcuseSection(
+                                    acuseHecho: acuseHecho,
+                                    onAcusarRecibido: () => setState(() => acuseHecho = true),
+                                  );
+                                case UCIPSSection.usuarios:
+                                  return SizedBox(
+                                    height: constraints.maxHeight - 32,
+                                    child: UsuariosSection(),
+                                  );
+                                case UCIPSSection.auditoria:
+                                  return SizedBox(
+                                    height: constraints.maxHeight - 32,
+                                    child: AuditoriaSection(),
+                                  );
+                              }
+                            },
                           ),
-                        ],
-                      ),
-                      const SizedBox(height: 10),
-                      SizedBox(
-                        height: 36,
-                        child: ElevatedButton.icon(
-                          icon: const Icon(Icons.upload_file, size: 16),
-                          label: const Text('Seleccionar PDF'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.grey.shade700,
-                            elevation: 1,
-                          ),
-                          onPressed: onSubirArchivo,
                         ),
                       ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 12),
-                
-                // Opción de acuse
-                CheckboxListTile(
-                  contentPadding: EdgeInsets.zero,
-                  dense: true,
-                  value: acuse,
-                  onChanged: (v) => onAcuseChanged(v ?? false),
-                  title: const Text('¿Requiere acuse digital?'),
-                ),
-                const SizedBox(height: 20),
-                
-                // Botón registrar
-                SizedBox(
-                  width: double.infinity,
-                  height: 46,
-                  child: ElevatedButton(
-                    onPressed: onRegistrar,
-                    style: ElevatedButton.styleFrom(
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      textStyle: const TextStyle(fontSize: 16),
                     ),
-                    child: const Text('Registrar'),
                   ),
                 ),
-              ],
-            ),
-            // Fin del formulario
-            ),
-          ],
-        ),
+              ),
+            ],
+          );
+        },
       ),
+    );
+  }
+}
+
+class _CopiableUserTile extends StatelessWidget {
+  final String user;
+  final String role;
+  const _CopiableUserTile({required this.user, required this.role});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        Expanded(child: Text('$user ($role)', style: const TextStyle(fontSize: 13))),
+        IconButton(
+          icon: const Icon(Icons.copy, size: 18),
+          tooltip: 'Copiar usuario',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: user));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Usuario copiado: $user'), duration: const Duration(seconds: 1)),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _CopiablePasswordTile extends StatelessWidget {
+  final String password;
+  const _CopiablePasswordTile({required this.password});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      children: [
+        const Text('Contraseña:', style: TextStyle(fontSize: 13)),
+        const SizedBox(width: 6),
+        Expanded(child: Text(password, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+        IconButton(
+          icon: const Icon(Icons.copy, size: 18),
+          tooltip: 'Copiar contraseña',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: password));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Contraseña copiada'), duration: Duration(seconds: 1)),
+            );
+          },
+        ),
+      ],
     );
   }
 }

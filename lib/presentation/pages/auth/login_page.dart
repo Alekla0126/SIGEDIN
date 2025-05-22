@@ -42,7 +42,7 @@ class LoginPage extends StatelessWidget {
                 Icon(Icons.account_balance, size: 100, color: AppTheme.primaryColor),
                 const SizedBox(height: 24),
                 const Text(
-                  'Gestion UCIPS',
+                  'Gestion de documentos UCIPS',
                   style: TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,

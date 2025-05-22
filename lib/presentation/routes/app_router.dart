@@ -6,15 +6,19 @@ import '../../../application/blocs/auth/auth_state.dart';
 import '../pages/auth/login_page.dart';
 import '../pages/dashboard/dashboard_page.dart';
 import '../pages/auth/unauthorized_page.dart';
+import '../pages/splash/splash_screen.dart';
 
 class AppRouter {
   static final GlobalKey<NavigatorState> _rootNavigatorKey = 
       GlobalKey<NavigatorState>(debugLabel: 'root');
 
   static final router = GoRouter(
-    initialLocation: '/login',
+    initialLocation: '/',
     navigatorKey: _rootNavigatorKey,
     redirect: (context, state) {
+      // No redirects for splash screen
+      if (state.uri.toString() == '/') return null;
+      
       // Lógica de autenticación para redirección
       final authBloc = BlocProvider.of<AuthBloc>(context, listen: false);
       final authState = authBloc.state;
@@ -29,6 +33,11 @@ class AppRouter {
       return null;
     },
     routes: [
+      GoRoute(
+        path: '/',
+        name: 'splash',
+        builder: (context, state) => const SplashScreen(),
+      ),
       GoRoute(
         path: '/login',
         name: 'login',

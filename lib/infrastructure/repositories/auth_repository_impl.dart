@@ -1,3 +1,5 @@
+import 'package:shared_preferences/shared_preferences.dart';
+
 import '../../domain/entities/user.dart';
 import '../../domain/repositories/auth_repository.dart';
 
@@ -52,6 +54,10 @@ class AuthRepositoryImpl implements AuthRepository {
       orElse: () => throw Exception('Credenciales inválidas'),
     );
     _mockCurrentUser = user;
+    // Guardar login en cache
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool('isLoggedIn', true);
+    await prefs.setString('userEmail', user.email);
     return true;
   }
 
@@ -59,16 +65,34 @@ class AuthRepositoryImpl implements AuthRepository {
   Future<void> logout() async {
     await Future.delayed(const Duration(milliseconds: 500));
     _mockCurrentUser = null;
+    // Limpiar cache
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove('isLoggedIn');
+    await prefs.remove('userEmail');
     return;
   }
 
   @override
   Future<User?> getCurrentUser() async {
-    return _mockCurrentUser;
+    if (_mockCurrentUser != null) return _mockCurrentUser;
+    // Intentar restaurar usuario desde cache
+    final prefs = await SharedPreferences.getInstance();
+    final email = prefs.getString('userEmail');
+    if (email != null) {
+      final user = _mockUsers.firstWhere(
+        (u) => u.email == email,
+        orElse: () => _mockUsers.first,
+      );
+      _mockCurrentUser = user;
+      return user;
+    }
+    return null;
   }
 
   @override
   Future<bool> isAuthenticated() async {
-    return _mockCurrentUser != null;
+    if (_mockCurrentUser != null) return true;
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool('isLoggedIn') ?? false;
   }
 }

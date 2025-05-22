@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter/services.dart';
 import '../../../application/blocs/auth/auth_bloc.dart';
 import '../../../application/blocs/auth/auth_event.dart';
 import '../../../application/blocs/auth/auth_state.dart';
@@ -99,23 +100,26 @@ class _LoginFormState extends State<LoginForm> {
           BlocBuilder<AuthBloc, AuthState>(
             builder: (context, state) {
               final isLoading = state.status == AuthStatus.loading;
-              return ElevatedButton(
-                onPressed: isLoading ? null : _submitForm,
-                child: isLoading
-                    ? const SizedBox(
-                        height: 20,
-                        width: 20,
-                        child: CircularProgressIndicator(
-                          color: Colors.white,
-                          strokeWidth: 2,
-                        ),
-                      )
-                    : const Text('INGRESAR'),
+              return SizedBox(
+                width: double.infinity, // Full width button for login
+                child: ElevatedButton(
+                  onPressed: isLoading ? null : _submitForm,
+                  child: isLoading
+                      ? const SizedBox(
+                          height: 20,
+                          width: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2,
+                          ),
+                        )
+                      : const Text('INGRESAR'),
+                ),
               );
             },
           ),
           const SizedBox(height: 16),
-          // Info de usuarios mock para pruebas (centrado y con contraseña)
+          // Info de usuarios mock para pruebas (con botones para copiar)
           Center(
             child: Container(
               padding: const EdgeInsets.all(16),
@@ -124,25 +128,76 @@ class _LoginFormState extends State<LoginForm> {
                 color: Color(0xFFF1F8E9),
                 borderRadius: BorderRadius.circular(8),
               ),
-              child: const Column(
+              child: Column(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Text(
+                  const Text(
                     'Usuarios de prueba:',
                     style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
                   ),
-                  SizedBox(height: 6),
-                  Text('admin@ucips.gob.mx'),
-                  Text('auditor@ucips.gob.mx'),
-                  Text('gestion@ucips.gob.mx'),
-                  SizedBox(height: 10),
-                  Text('Contraseña: admin123', style: TextStyle(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 6),
+                  _CopiableUserTile(user: 'admin@ucips.gob.mx', role: 'Administrador'),
+                  _CopiableUserTile(user: 'auditor@ucips.gob.mx', role: 'Auditor'),
+                  _CopiableUserTile(user: 'gestion@ucips.gob.mx', role: 'Gestión Documental'),
+                  const SizedBox(height: 10),
+                  _CopiablePasswordTile(password: 'admin123'),
                 ],
               ),
             ),
           ),
         ],
       ),
+    );
+  }
+}
+
+class _CopiableUserTile extends StatelessWidget {
+  final String user;
+  final String role;
+  const _CopiableUserTile({required this.user, required this.role});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Expanded(child: Text('$user ($role)', style: const TextStyle(fontSize: 13))),
+        IconButton(
+          icon: const Icon(Icons.copy, size: 18),
+          tooltip: 'Copiar usuario',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: user));
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text('Usuario copiado: $user'), duration: const Duration(seconds: 1)),
+            );
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _CopiablePasswordTile extends StatelessWidget {
+  final String password;
+  const _CopiablePasswordTile({required this.password});
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        const Text('Contraseña:', style: TextStyle(fontSize: 13)),
+        const SizedBox(width: 6),
+        Expanded(child: Text(password, style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13))),
+        IconButton(
+          icon: const Icon(Icons.copy, size: 18),
+          tooltip: 'Copiar contraseña',
+          onPressed: () {
+            Clipboard.setData(ClipboardData(text: password));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(content: Text('Contraseña copiada'), duration: Duration(seconds: 1)),
+            );
+          },
+        ),
+      ],
     );
   }
 }
