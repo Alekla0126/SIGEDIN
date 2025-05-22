@@ -1,6 +1,6 @@
 name: aucips
 description: "A new Flutter project."
-publish_to: 'none'
+publish_to: none
 
 version: 1.0.0+1
 
@@ -12,6 +12,8 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
+
+  # UI & state
   cupertino_icons: ^1.0.8
   flutter_bloc: ^8.1.3
   equatable: ^2.0.5
@@ -19,15 +21,21 @@ dependencies:
   google_fonts: ^6.1.0
   flutter_svg: ^2.0.9
   formz: ^0.6.1
+
+  # Networking & storage
   dio: ^5.3.3
   shared_preferences: ^2.2.2
+
+  # Docs / PDF
   intl: ^0.19.0
   pdf: ^3.10.4
   file_saver: ^0.2.9
+  syncfusion_flutter_pdfviewer: ^24.1.41
+
+  # Media / utils
   image_picker_web: ^3.1.1
   uuid: ^4.1.0
-  file_picker: ^10.1.9
-  syncfusion_flutter_pdfviewer: ^24.1.41
+  file_picker: ^6.1.1        # ✅ compatible con Dart 3.2.x
 
 dev_dependencies:
   flutter_test:
