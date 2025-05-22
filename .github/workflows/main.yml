@@ -8,7 +8,7 @@ jobs:
   build:
     runs-on: ubuntu-latest
     env:
-      FLUTTER_VERSION: '3.10.0'   # Versión estable que incluye Dart 3.7.0
+      FLUTTER_VERSION: '3.29.1'   # Versión estable que incluye Dart 3.7.0
       FLUTTER_CHANNEL: stable
       BASE_HREF: "/SIGEDIN/"
 
