@@ -12,9 +12,9 @@ jobs:
 
     env:
       FLUTTER_CHANNEL: stable
-      FLUTTER_VERSION: '3.32.0'
+      FLUTTER_VERSION: '3.7.0'
       APP_NAME: ${{ github.repository }}
-      BASE_HREF: "/SIGEDIN/"
+      BASE_HREF: "/aucips/"
 
     steps:
     - name: Checkout code
