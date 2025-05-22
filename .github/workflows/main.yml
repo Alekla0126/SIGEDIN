@@ -12,7 +12,7 @@ jobs:
 
     env:
       FLUTTER_CHANNEL: stable
-      FLUTTER_VERSION: '3.16.0'  # ✅ Incluye Dart 3.2.x
+      FLUTTER_VERSION: '3.7.0'  # ✅ Incluye Dart 3.2.x
       APP_NAME: ${{ github.repository }}
       BASE_HREF: "/SIGEDIN/"
 
