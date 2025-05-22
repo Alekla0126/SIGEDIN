@@ -12,7 +12,7 @@ jobs:
 
     env:
       FLUTTER_CHANNEL: stable
-      FLUTTER_VERSION: '3.7.0'  # ✅ Actualizado a versión compatible con Dart 3.7.0+
+      FLUTTER_VERSION: '3.16.0'  # ✅ Incluye Dart 3.2.x
       APP_NAME: ${{ github.repository }}
       BASE_HREF: "/SIGEDIN/"
 
@@ -26,7 +26,7 @@ jobs:
         flutter-version: ${{ env.FLUTTER_VERSION }}
         channel: ${{ env.FLUTTER_CHANNEL }}
 
-    - name: Enable Web Support
+    - name: Set up environment
       run: flutter config --enable-web
 
     - name: Install dependencies

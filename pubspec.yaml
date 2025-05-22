@@ -1,50 +1,42 @@
-name: aucips
-description: "Sistema institucional UCIPS - Gestión documental administrativa"
-publish_to: 'none'
+name: Deploy Flutter Web App to GitHub Pages
 
-version: 1.0.0+1
+on:
+  push:
+    branches:
+      - main
 
-environment:
-  sdk: '>=3.2.0 <4.0.0'
+jobs:
+  build:
+    name: Build and Deploy
+    runs-on: ubuntu-latest
 
-dependencies:
-  flutter:
-    sdk: flutter
-  flutter_localizations:
-    sdk: flutter
+    env:
+      FLUTTER_CHANNEL: stable
+      FLUTTER_VERSION: '3.16.0'  # ✅ Incluye Dart 3.2.x
+      APP_NAME: ${{ github.repository }}
+      BASE_HREF: "/SIGEDIN/"
 
-  cupertino_icons: ^1.0.8
-  flutter_bloc: ^8.1.3
-  equatable: ^2.0.5
-  go_router: ^12.1.1
-  google_fonts: ^6.1.0
-  flutter_svg: ^2.0.9
-  formz: ^0.6.1
-  dio: ^5.3.3
-  shared_preferences: ^2.2.2
-  intl: ^0.19.0
-  pdf: ^3.10.4
-  file_saver: ^0.2.9
-  image_picker_web: ^3.1.1
-  uuid: ^4.1.0
-  file_picker: ^10.1.9
-  syncfusion_flutter_pdfviewer: ^24.1.41
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v3
 
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^3.0.1  # Compatible con Dart 3.2.0
-  flutter_native_splash: ^2.4.0
+    - name: Install Flutter
+      uses: subosito/flutter-action@v2
+      with:
+        flutter-version: ${{ env.FLUTTER_VERSION }}
+        channel: ${{ env.FLUTTER_CHANNEL }}
 
-flutter:
-  uses-material-design: true
-  assets:
-    - assets/images/
-    - assets/icons/
+    - name: Set up environment
+      run: flutter config --enable-web
 
-flutter_native_splash:
-  color: "#1A73E8"
-  image: assets/icons/UCIPS-02.png
-  android: true
-  ios: true
-  web: false
+    - name: Install dependencies
+      run: flutter pub get
+
+    - name: Build the web app
+      run: flutter build web --release --base-href="${{ env.BASE_HREF }}"
+
+    - name: Deploy to GitHub Pages
+      uses: peaceiris/actions-gh-pages@v3
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        publish_dir: build/web
