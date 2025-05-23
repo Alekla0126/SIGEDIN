@@ -101,7 +101,7 @@ class AppTheme {
         floatingLabelStyle: const TextStyle(color: primaryColor, fontWeight: FontWeight.bold),
         hintStyle: TextStyle(color: secondaryColor.withOpacity(0.5)),
       ),
-      cardTheme: CardTheme(
+      cardTheme: CardThemeData(
         elevation: 2,
         color: cardColor,
         shadowColor: shadowColor,
