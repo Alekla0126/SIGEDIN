@@ -3,10 +3,9 @@ import 'package:go_router/go_router.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/services.dart';
-import 'package:aucips/application/blocs/auth/auth_bloc.dart';
-import 'package:aucips/application/blocs/auth/auth_state.dart';
-import '../../../application/blocs/auth/auth_event.dart';
-import 'reusable_widget.dart';
+import '../../../../application/blocs/auth/auth_bloc.dart';
+import '../../../../application/blocs/auth/auth_state.dart';
+import '../../../../application/blocs/auth/auth_event.dart';
 import 'dashboard_section.dart';
 import 'registro_section.dart';
 import 'turnado_section.dart';
@@ -551,15 +550,18 @@ class _DashboardPageState extends State<DashboardPage> {
                 onTap: () => setState(() => section = UCIPSSection.auditoria),
               ),
               const Divider(),
-              ListTile(
-                leading: const Icon(Icons.exit_to_app),
-                title: const Text('Cerrar sesión'),
-                onTap: () {
-                  context.read<AuthBloc>().add(AuthLogoutRequested());
-                  context.read<AuthBloc>().stream.firstWhere((state) => state.status == AuthStatus.unauthenticated).then((_) {
-                    context.go('/login');
-                  });
+              BlocListener<AuthBloc, AuthState>(
+                listenWhen: (previous, current) => current.status == AuthStatus.unauthenticated,
+                listener: (context, state) {
+                  context.go('/login');
                 },
+                child: ListTile(
+                  leading: const Icon(Icons.exit_to_app),
+                  title: const Text('Cerrar sesión'),
+                  onTap: () {
+                    context.read<AuthBloc>().add(AuthLogoutRequested());
+                  },
+                ),
               ),
             ],
           ),

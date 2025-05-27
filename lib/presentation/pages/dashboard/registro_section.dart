@@ -455,7 +455,7 @@ class _EmisionForm extends StatelessWidget {
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Text('Archivo de origen (PDF obligatorio)', style: TextStyle(fontWeight: FontWeight.w600)),
+                const Text('Documento recibido', style: TextStyle(fontWeight: FontWeight.w600)),
                 const SizedBox(height: 6),
                 SizedBox(
                   width: double.infinity,

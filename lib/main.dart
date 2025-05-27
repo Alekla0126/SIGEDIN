@@ -1,15 +1,42 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:get_it/get_it.dart';
+import 'core/config/env_config.dart';
 import 'core/theme/app_theme.dart';
-import 'application/blocs/auth/auth_bloc.dart';
-import 'application/blocs/auth/auth_event.dart';
-import 'infrastructure/repositories/auth_repository_impl.dart';
+import 'injection_container.dart' as di;
+import 'features/auth/presentation/bloc/auth_bloc.dart';
 import 'presentation/routes/app_router.dart';
 
-void main() {
+final getIt = GetIt.instance;
+
+Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  runApp(const MyApp());
+  
+  try {
+    // Initialize environment configuration
+    await EnvConfig.load();
+    
+    // Initialize dependency injection
+    await di.init();
+    
+    runApp(const MyApp());
+  } catch (e) {
+    // Handle initialization errors
+    if (kDebugMode) {
+      print('Failed to initialize app: $e');
+    }
+    runApp(
+      MaterialApp(
+        home: Scaffold(
+          body: Center(
+            child: Text('Failed to initialize app: $e'),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -17,20 +44,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (context) {
-            final bloc = AuthBloc(
-              authRepository: AuthRepositoryImpl(),
-            );
-            bloc.add(AuthCheckRequested());
-            return bloc;
-          },
-        ),
-      ],
+    return BlocProvider(
+      create: (context) => getIt<AuthBloc>()..add(CheckAuthStatusRequested()),
       child: MaterialApp.router(
-        title: 'UCIPS',
+        title: 'SIGEDIN',
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: ThemeMode.light,
